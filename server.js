@@ -1,0 +1,41 @@
+const express = require('express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const app = express();
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "http://localhost:4200", // your Angular frontend
+    methods: ["GET", "POST"]
+  }
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('setUsername', (username) => {
+    socket.username = username;
+  });
+
+  socket.on('chat:message', (msg) => {
+    const data = {
+      user: socket.username || 'Anonymous',
+      text: msg,
+      time: new Date().toLocaleTimeString()
+    };
+    io.emit('chat:message', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+httpServer.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
+});
