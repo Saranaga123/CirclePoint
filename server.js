@@ -1,53 +1,42 @@
 const express = require('express');
-const cors = require('cors');
-const http = require('http');
+const { createServer } = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
 const app = express();
+const httpServer = createServer(app);
 
-// ✅ Allow Angular dev server & others
-app.use(cors({
-  origin: [
-    'http://localhost:4200',   // Angular dev
-    'https://sarabe.onrender.com' // your deployed frontend if needed
-  ],
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
-
-const server = http.createServer(app);
-const io = new Server(server, {
+const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:4200', 'https://sarabe.onrender.com'],
-    methods: ['GET', 'POST']
+    origin: "http://localhost:4200", // your Angular frontend
+    methods: ["GET", "POST"]
   }
 });
 
-// ✅ Simple ping route
+app.use(express.static(path.join(__dirname, 'public')));
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // assign username
+  socket.on('setUsername', (username) => {
+    socket.username = username;
+    console.log(`User ${socket.id} set username: ${username}`);
+  });
+
+  // receive messages
+  socket.on('chat:message', (msg) => {
+    const data = {
+      user: socket.username || 'Anonymous', // fallback
+      text: msg,
+      time: new Date().toLocaleTimeString()
+    };
+    io.emit('chat:message', data);
+  });
+});
 app.get('/ping', (req, res) => {
   res.json({ status: 'ok' });
 });
-
-io.on('connection', socket => {
-  console.log('New client connected');
-  
-  socket.on('setUsername', (username) => {
-    socket.data.username = username;
-  });
-
-  socket.on('chatMessage', (msg) => {
-    io.emit('chatMessage', {
-      user: socket.data.username || 'Anonymous',
-      text: msg,
-      time: new Date().toLocaleTimeString()
-    });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
-
-server.listen(3000, () => {
-  console.log('Server running on port 3000');
+httpServer.listen(3000, () => {
+  console.log('Server running on http://localhost:3000');
 });
