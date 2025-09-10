@@ -1,42 +1,32 @@
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
+const cors = require('cors');
 
 const app = express();
 const httpServer = createServer(app);
 
+app.use(cors()); // allow all origins for now
+
 const io = new Server(httpServer, {
-  cors: {
-    origin: "http://localhost:4200", // your Angular frontend
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*" } // same
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-io.on('connection', (socket) => {
+io.on('connection', socket => {
   console.log('User connected:', socket.id);
 
-  // assign username
-  socket.on('setUsername', (username) => {
-    socket.username = username;
-    console.log(`User ${socket.id} set username: ${username}`);
-  });
+  socket.on('setUsername', username => { socket.username = username; });
 
-  // receive messages
-  socket.on('chat:message', (msg) => {
-    const data = {
-      user: socket.username || 'Anonymous', // fallback
+  socket.on('chat:message', msg => {
+    io.emit('chat:message', {
+      user: socket.username || 'Anonymous',
       text: msg,
       time: new Date().toLocaleTimeString()
-    };
-    io.emit('chat:message', data);
+    });
   });
 });
-app.get('/ping', (req, res) => {
-  res.json({ status: 'ok' });
-});
-httpServer.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
-});
+
+app.get('/ping', (req, res) => res.json({ status: 'ok' }));
+
+const PORT = process.env.PORT || 3000;
+httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
