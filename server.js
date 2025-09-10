@@ -34,7 +34,9 @@ io.on('connection', (socket) => {
     io.emit('chat:message', data);
   });
 });
-
+app.get('/ping', (req, res) => {
+  res.json({ status: 'ok' });
+});
 httpServer.listen(3000, () => {
   console.log('Server running on http://localhost:3000');
 });
