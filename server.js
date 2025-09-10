@@ -12,19 +12,30 @@ const io = new Server(httpServer, {
   cors: { origin: "*" } // same
 });
 
-io.on('connection', socket => {
+io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('setUsername', username => { socket.username = username; });
+  socket.on('setUsername', (username) => {
+    socket.username = username;
+  });
 
-  socket.on('chat:message', msg => {
+  socket.on('chat:message', (msg) => {
     io.emit('chat:message', {
       user: socket.username || 'Anonymous',
       text: msg,
       time: new Date().toLocaleTimeString()
     });
   });
+
+  // ✅ New: typing indicator
+  socket.on('chat:typing', (isTyping) => {
+    socket.broadcast.emit('chat:typing', {
+      user: socket.username || 'Anonymous',
+      isTyping
+    });
+  });
 });
+
 
 app.get('/ping', (req, res) => res.json({ status: 'ok' }));
 
