@@ -62,10 +62,9 @@ io.on('connection', (socket) => {
 app.get('/ping', (req, res) => res.json({ status: 'ok' }));
 
 // ✅ API: Fetch messages by user
-app.get('/messages/:user', async (req, res) => {
+app.get('/messages', async (req, res) => {
   try {
-    const user = req.params.user;
-    const messages = await Message.find({ user }).sort({ createdAt: 1 }); // oldest first
+    const messages = await Message.find().sort({ createdAt: 1 }); // oldest first
     res.json(messages);
   } catch (err) {
     console.error(err);
