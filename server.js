@@ -33,6 +33,7 @@ io.on('connection', (socket) => {
 
   socket.on('setUsername', (username) => {
     socket.username = username;
+    io.emit('user:connected', username);
   });
   socket.on('disconnect', () => {
       console.log('❌ A user disconnected:', socket.username);
