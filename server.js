@@ -34,7 +34,12 @@ io.on('connection', (socket) => {
   socket.on('setUsername', (username) => {
     socket.username = username;
   });
-
+  socket.on('disconnect', () => {
+      console.log('❌ A user disconnected:', socket.username);
+      if (socket.username) {
+        io.emit('user:disconnected', socket.username);
+      }
+    });
   socket.on('chat:message', async (msg) => {
     const chatMessage = {
       user: socket.username || 'Anonymous',
