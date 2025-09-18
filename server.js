@@ -117,7 +117,22 @@ app.delete('/messages', async (req, res) => {
 app.get('/keepalive', (req, res) => {
   res.json({ success: true, message: 'Server is alive!' });
 });
+app.get('/messages/unread-count', async (req, res) => {
+  try {
+    const { userId } = req.query; // the user who wants to know unread messages
+    if (!userId) return res.status(400).json({ success: false, error: 'userId query param required' });
 
+    const count = await Message.countDocuments({
+      receiverId: userId,
+      status: { $ne: 'seen' }  // status not equal to "seen"
+    });
+
+    res.json({ success: true, unreadCount: count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
