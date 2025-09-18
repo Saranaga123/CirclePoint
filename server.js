@@ -1,96 +1,124 @@
+// server.js
 const express = require('express');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 const app = express();
-const httpServer = createServer(app);
+const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ✅ MongoDB connection
-const MONGO_URI = 'mongodb+srv://Saranga:bamboos4pandas@mongodbatlas.b08etuk.mongodb.net/?retryWrites=true&w=majority';
-mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+// MongoDB connection
+const MONGO_URI = "mongodb+srv://Saranga:bamboos4pandas@mongodbatlas.b08etuk.mongodb.net/?retryWrites=true&w=majority";
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log("✅ MongoDB connected"))
+.catch(err => console.error("❌ MongoDB connection error:", err));
 
-// ✅ Message schema
+// Message schema
 const messageSchema = new mongoose.Schema({
-  user: { type: String, required: true },
-  text: { type: String, required: true },
-  time: { type: String, required: true },
-}, { timestamps: true });
+  messageId: String,
+  senderId: String,
+  receiverId: String,
+  messageType: String,
+  content: String,
+  timestamp: { type: Date, default: Date.now },
+  status: { type: String, enum: ['failed','sent','delivered','seen'], default: 'sent' },
+  reaction: { type: String, default: null },
+});
 
 const Message = mongoose.model('Message', messageSchema);
 
-// Socket.IO
-const io = new Server(httpServer, { cors: { origin: "*" } });
+// Routes
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  socket.on('setUsername', (username) => {
-    socket.username = username;
-    io.emit('user:connected', username);
-  });
-  socket.on('disconnect', () => {
-      console.log('❌ A user disconnected:', socket.username);
-      if (socket.username) {
-        io.emit('user:disconnected', socket.username);
-      }
-    });
-  socket.on('chat:message', async (msg) => {
-    const chatMessage = {
-      user: socket.username || 'Anonymous',
-      text: msg,
-      time: new Date().toLocaleTimeString()
-    };
-
-    // ✅ Save message to MongoDB
-    try {
-      await Message.create(chatMessage);
-      io.emit('chat:message', chatMessage);
-    } catch (err) {
-      console.error('Error saving message:', err);
-    }
-  });
-
-  socket.on('chat:typing', (isTyping) => {
-    socket.broadcast.emit('chat:typing', {
-      user: socket.username || 'Anonymous',
-      isTyping
-    });
-  });
+// 1️⃣ Send a message
+app.post('/messages', async (req, res) => {
+  try {
+    const msg = new Message(req.body);
+    await msg.save();
+    res.status(201).json({ success: true, message: msg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
-app.get('/ping', (req, res) => res.json({ status: 'ok' }));
-
-// ✅ API: Fetch messages by user
+// 2️⃣ Fetch messages between two users
 app.get('/messages', async (req, res) => {
   try {
-    const messages = await Message.find().sort({ createdAt: 1 }); // oldest first
+    const { user1, user2 } = req.query;
+    const messages = await Message.find({
+      $or: [
+        { senderId: user1, receiverId: user2 },
+        { senderId: user2, receiverId: user1 }
+      ]
+    }).sort({ timestamp: 1 });
     res.json(messages);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ✅ API: Optional: save message manually
-app.post('/messages', async (req, res) => {
-  const { user, text, time } = req.body;
-  if (!user || !text || !time) return res.status(400).json({ error: 'Missing fields' });
-
+// 3️⃣ Seed dummy messages
+app.post('/seed', async (req, res) => {
   try {
-    const message = await Message.create({ user, text, time });
-    res.json(message);
+    const dummyMessages = [
+      {
+        messageId: 'msg001',
+        senderId: 'Asad',
+        receiverId: 'Kylie',
+        messageType: 'text',
+        content: 'Hey Kylie! How are you?',
+        status: 'delivered'
+      },
+      {
+        messageId: 'msg002',
+        senderId: 'Kylie',
+        receiverId: 'Asad',
+        messageType: 'text',
+        content: 'Hi Asad! I am good, thanks. How about you?',
+        status: 'delivered',
+        reaction: '👍'
+      },
+      {
+        messageId: 'msg003',
+        senderId: 'Asad',
+        receiverId: 'Kylie',
+        messageType: 'text',
+        content: 'Doing great!',
+        status: 'seen'
+      }
+    ];
+    await Message.insertMany(dummyMessages);
+    res.json({ success: true, message: 'Dummy messages inserted' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// 4️⃣ Clean all messages
+app.delete('/messages', async (req, res) => {
+  try {
+    await Message.deleteMany({});
+    res.json({ success: true, message: 'All messages deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5️⃣ Keep-alive endpoint
+app.get('/keepalive', (req, res) => {
+  res.json({ success: true, message: 'Server is alive!' });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
