@@ -6,14 +6,11 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const corsOptions = {
-  origin: '*', // or restrict to your Angular URL
-  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+app.use(cors({
+  origin: '*',  // allow all origins, or replace with your Angular URL
+  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type']
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+}));
 app.use(express.json());
 
 // MongoDB connection
