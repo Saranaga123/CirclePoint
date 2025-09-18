@@ -18,7 +18,60 @@ mongoose.connect(MONGO_URI, {
 })
 .then(() => console.log("✅ MongoDB connected"))
 .catch(err => console.error("❌ MongoDB connection error:", err));
+const userSchema = new mongoose.Schema({
+  userId: { type: String, unique: true },
+  username: { type: String, required: true },
+  password: { type: String, required: true }, // store hashed passwords
+  email: { type: String, required: false },
+  profileImage: { type: String, default: null }, // URL of image
+  createdAt: { type: Date, default: Date.now }
+});
 
+const User = mongoose.model('User', userSchema);
+app.post('/seed-users', async (req, res) => {
+  try {
+    const users = [
+      { userId: 'Asad', username: 'Asad', password: 'password123', profileImage: null },
+      { userId: 'Kylie', username: 'Kylie', password: 'password123', profileImage: null }
+    ];
+    await User.insertMany(users, { ordered: false }); // ignore duplicates
+    res.json({ success: true, message: 'Users seeded' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    if (user.password !== password) {
+      return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/users/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateData = req.body; // e.g., { username: "NewName", profileImage: "url" }
+
+    const user = await User.findOneAndUpdate({ userId }, updateData, { new: true });
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    res.json({ success: true, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 // Message schema
 const messageSchema = new mongoose.Schema({
   messageId: String,
