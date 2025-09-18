@@ -6,8 +6,14 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(cors());
+const corsOptions = {
+  origin: '*', // or restrict to your Angular URL
+  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // MongoDB connection
@@ -16,8 +22,8 @@ mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log("✅ MongoDB connected"))
-.catch(err => console.error("❌ MongoDB connection error:", err));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => console.error("❌ MongoDB connection error:", err));
 const userSchema = new mongoose.Schema({
   userId: { type: String, unique: true },
   username: { type: String, required: true },
@@ -80,7 +86,7 @@ const messageSchema = new mongoose.Schema({
   messageType: String,
   content: String,
   timestamp: { type: Date, default: Date.now },
-  status: { type: String, enum: ['failed','sent','delivered','seen'], default: 'sent' },
+  status: { type: String, enum: ['failed', 'sent', 'delivered', 'seen'], default: 'sent' },
   reaction: { type: String, default: null },
 });
 
