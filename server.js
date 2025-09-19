@@ -102,6 +102,37 @@ app.get('/messages/unread', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+// 6️⃣ Delete messages by date range (only Asad can do this)
+app.delete('/messages/by-date', async (req, res) => {
+  try {
+    const { userId, startDate, endDate } = req.body;
+
+    if (userId !== 'Asad') {
+      return res.status(403).json({ success: false, error: 'Only Asad can delete messages' });
+    }
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ success: false, error: 'startDate and endDate are required' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const result = await Message.deleteMany({
+      timestamp: { $gte: start, $lte: end }
+    });
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `Deleted ${result.deletedCount} messages between ${startDate} and ${endDate}`
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.patch('/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
