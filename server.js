@@ -49,9 +49,10 @@ app.post('/seed-users', async (req, res) => {
 });
 app.post('/login', async (req, res) => {
   try {
-    const { userId, password } = req.body; // <-- use userId
+    const { username, password } = req.body;
 
-    const user = await User.findOne({ userId });
+    // Find by userId (exact) or by username (with emojis)
+    const user = await User.findOne({ userId: username }); 
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     if (user.password !== password) {
