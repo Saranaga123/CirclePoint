@@ -63,7 +63,45 @@ app.post('/login', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+app.patch('/messages/mark-seen', async (req, res) => {
+  try {
+    const { userId, fromUser } = req.body;
+    if (!userId) return res.status(400).json({ success: false, error: 'userId required' });
 
+    const query = {
+      receiverId: userId,
+      status: { $ne: 'seen' }
+    };
+    if (fromUser) query.senderId = fromUser;
+
+    const result = await Message.updateMany(query, { $set: { status: 'seen' } });
+
+    res.json({ success: true, updated: result.modifiedCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.get('/messages/unread', async (req, res) => {
+  try {
+    const { userId, fromUser } = req.query;
+    if (!userId) return res.status(400).json({ success: false, error: 'userId required' });
+
+    // Only get unread messages for this user, optionally filter by sender
+    const query = {
+      receiverId: userId,
+      status: { $ne: 'seen' }
+    };
+    if (fromUser) query.senderId = fromUser;
+
+    const unreadMessages = await Message.find(query).sort({ timestamp: 1 });
+
+    res.json({ success: true, messages: unreadMessages });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 app.patch('/users/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
