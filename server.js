@@ -49,20 +49,25 @@ app.post('/seed-users', async (req, res) => {
 });
 app.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { userId, password } = req.body; // use userId from request
+
+    // Find the user by userId
+    const user = await User.findOne({ userId });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
+    // Check password
     if (user.password !== password) {
       return res.status(401).json({ success: false, error: 'Invalid password' });
     }
 
+    // Return user info
     res.json({ success: true, user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
 app.patch('/messages/mark-seen', async (req, res) => {
   try {
     const { userId, fromUser } = req.body;
