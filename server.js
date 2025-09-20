@@ -34,10 +34,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const admin = require('firebase-admin');
-const serviceAccount = require(process.env.FIREBASE_KEY_PATH);
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
-}); 
+});
 const deviceTokenSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   token: { type: String, required: true },
