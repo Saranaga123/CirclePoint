@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 const corsOptions = {
   origin: '*',
-  methods: ['GET','POST','PATCH','DELETE','OPTIONS'],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type']
 };
 
@@ -112,7 +112,7 @@ app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     // Find by userId (exact) or by username (with emojis)
-    const user = await User.findOne({ userId: username }); 
+    const user = await User.findOne({ userId: username });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
     if (user.password !== password) {
@@ -224,7 +224,7 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
- 
+
 app.get('/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
