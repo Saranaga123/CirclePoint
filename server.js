@@ -34,6 +34,66 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model('User', userSchema);
+const admin = require('firebase-admin');
+const serviceAccount = require('./otwo-a14ed-firebase-adminsdk-fbsvc-d3bab4dcac.json');
+const deviceTokenSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  token: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const DeviceToken = mongoose.model('DeviceToken', deviceTokenSchema);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+app.post('/register-token', async (req, res) => {
+  try {
+    const { userId, token } = req.body;
+    if (!userId || !token) return res.status(400).json({ success: false, error: 'userId and token required' });
+
+    await DeviceToken.updateOne(
+      { userId, token },
+      { $set: { userId, token } },
+      { upsert: true } // create if not exists
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+app.post('/messages', async (req, res) => {
+  try {
+    const msg = new Message(req.body);
+    await msg.save();
+
+    // Fetch device tokens of receiver
+    const tokens = await DeviceToken.find({ userId: msg.receiverId }).distinct('token');
+
+    if (tokens.length > 0) {
+      const messagePayload = {
+        notification: {
+          title: `New message from ${msg.senderId}`,
+          body: msg.content
+        },
+        tokens // send to all devices of this user
+      };
+
+      admin.messaging().sendMulticast(messagePayload)
+        .then(response => {
+          console.log('FCM messages sent:', response.successCount);
+        })
+        .catch(err => console.error('FCM error:', err));
+    }
+
+    res.status(201).json({ success: true, message: msg });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/seed-users', async (req, res) => {
   try {
     const users = [
@@ -164,21 +224,7 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
-// Routes
-
-// 1️⃣ Send a message
-app.post('/messages', async (req, res) => {
-  try {
-    const msg = new Message(req.body);
-    await msg.save();
-    res.status(201).json({ success: true, message: msg });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 2️⃣ Fetch messages between two users
+ 
 app.get('/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
