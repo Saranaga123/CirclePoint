@@ -2,7 +2,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
+require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -17,7 +17,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB connection
-const MONGO_URI = "mongodb+srv://Saranga:bamboos4pandas@mongodbatlas.b08etuk.mongodb.net/?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI;
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -33,7 +33,6 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const User = mongoose.model('User', userSchema);
 const admin = require('firebase-admin');
 const serviceAccount = require('./otwo-a14ed-firebase-adminsdk-fbsvc-d3bab4dcac.json');
 const deviceTokenSchema = new mongoose.Schema({
@@ -41,7 +40,19 @@ const deviceTokenSchema = new mongoose.Schema({
   token: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
+const messageSchema = new mongoose.Schema({
+  messageId: String,
+  senderId: String,
+  receiverId: String,
+  messageType: String,
+  content: String,
+  timestamp: { type: Date, default: Date.now },
+  status: { type: String, enum: ['failed', 'sent', 'delivered', 'seen'], default: 'sent' },
+  reaction: { type: String, default: null },
+});
 
+const Message = mongoose.model('Message', messageSchema);
+const User = mongoose.model('User', userSchema);
 const DeviceToken = mongoose.model('DeviceToken', deviceTokenSchema);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -164,8 +175,7 @@ app.get('/messages/unread', async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
-// 6️⃣ Delete messages by date range (only Asad can do this)
+}); 
 app.delete('/messages/by-date', async (req, res) => {
   try {
     const { userId, startDate, endDate } = req.body;
@@ -209,22 +219,7 @@ app.patch('/users/:userId', async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
-// Message schema
-const messageSchema = new mongoose.Schema({
-  messageId: String,
-  senderId: String,
-  receiverId: String,
-  messageType: String,
-  content: String,
-  timestamp: { type: Date, default: Date.now },
-  status: { type: String, enum: ['failed', 'sent', 'delivered', 'seen'], default: 'sent' },
-  reaction: { type: String, default: null },
-});
-
-const Message = mongoose.model('Message', messageSchema);
-
-
+}); 
 app.get('/messages', async (req, res) => {
   try {
     const { user1, user2 } = req.query;
@@ -240,8 +235,7 @@ app.get('/messages', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// 3️⃣ Seed dummy messages
+ 
 app.post('/seed', async (req, res) => {
   try {
     const dummyMessages = [
@@ -278,8 +272,7 @@ app.post('/seed', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// 4️⃣ Clean all messages
+ 
 app.delete('/messages', async (req, res) => {
   try {
     await Message.deleteMany({});
@@ -289,8 +282,7 @@ app.delete('/messages', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-
-// 5️⃣ Keep-alive endpoint
+ 
 app.get('/keepalive', (req, res) => {
   res.json({ success: true, message: 'Server is alive!' });
 });
@@ -309,8 +301,7 @@ app.get('/messages/unread-count', async (req, res) => {
     console.error(err);
     res.status(500).json({ success: false, error: err.message });
   }
-});
-// Start server
+}); 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
