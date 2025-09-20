@@ -34,7 +34,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const admin = require('firebase-admin');
-const serviceAccount = require('./otwo-a14ed-firebase-adminsdk-fbsvc-d3bab4dcac.json');
+const serviceAccount = require(process.env.FIREBASE_KEY_PATH);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+}); 
 const deviceTokenSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   token: { type: String, required: true },
@@ -54,9 +57,7 @@ const messageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', messageSchema);
 const User = mongoose.model('User', userSchema);
 const DeviceToken = mongoose.model('DeviceToken', deviceTokenSchema);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+
 app.post('/register-token', async (req, res) => {
   try {
     const { userId, token } = req.body;
